@@ -1,0 +1,1 @@
+{"hosting":[{"target":"driver","public":"driver","ignore":["firebase.json","**/.*","**/node_modules/**"]},{"target":"monitor","public":"monitor","ignore":["firebase.json","**/.*","**/node_modules/**"]}]}
