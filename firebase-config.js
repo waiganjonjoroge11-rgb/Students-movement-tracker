@@ -1,10 +1,10 @@
-// Replace these placeholders with your Firebase project's Web App configuration.
-// Firebase Console → Project settings → General → Your apps → SDK setup and configuration.
+// Firebase web-app configuration for the existing project student-movement-tracker.
+// This is client configuration, not a service-account private key.
 export const firebaseConfig = {
-  apiKey: "PASTE_API_KEY_HERE",
-  authDomain: "PASTE_PROJECT_ID.firebaseapp.com",
-  projectId: "PASTE_PROJECT_ID",
-  storageBucket: "PASTE_PROJECT_ID.appspot.com",
-  messagingSenderId: "PASTE_MESSAGING_SENDER_ID",
-  appId: "PASTE_APP_ID"
+  apiKey: "AIzaSyDY1k8XnAEocRbO47oh_m60EA90lVqhews",
+  authDomain: "student-movement-tracker.firebaseapp.com",
+  projectId: "student-movement-tracker",
+  storageBucket: "student-movement-tracker.firebasestorage.app",
+  messagingSenderId: "766453953545",
+  appId: "1:766453953545:web:caf414891525a765a3b4d8"
 };
