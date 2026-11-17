@@ -1,19 +1,32 @@
 rules_version = '2';
 service cloud.firestore {
  match /databases/{database}/documents {
-  function signedIn(){return request.auth != null;}
-  function admin(){return signedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";}
-  match /users/{uid}{allow read:if signedIn()&&(request.auth.uid==uid||admin());allow write:if admin();}
-  match /students/{id}{allow read:if signedIn();allow create,update,delete:if admin();}
-  match /attendance/{id}{
-   allow read:if admin()||(signedIn()&&resource.data.recordedBy==request.auth.uid);
-   allow create:if signedIn()&&request.resource.data.recordedBy==request.auth.uid&&request.resource.data.status in ["picked","absent"]&&request.resource.data.studentId is string&&request.resource.data.date is string;
-   allow update,delete:if admin();
+  function signedIn(){ return request.auth != null; }
+  function role(){ return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role; }
+  function admin(){ return signedIn() && role() == "admin"; }
+  function driver(){ return signedIn() && role() in ["driver","admin"]; }
+  match /users/{uid} {
+   allow read: if signedIn() && (request.auth.uid == uid || admin());
+   allow write: if admin();
   }
-  match /movements/{id}{
-   allow read:if admin()||(signedIn()&&resource.data.recordedBy==request.auth.uid);
-   allow create:if signedIn()&&request.resource.data.recordedBy==request.auth.uid&&request.resource.data.event is string;
-   allow update,delete:if admin();
+  match /Students/{studentId} {
+   allow read: if driver();
+   allow write: if admin();
+  }
+  match /attendance/{id} {
+   allow create: if driver() && request.resource.data.driverUid == request.auth.uid;
+   allow read: if admin() || (driver() && resource.data.driverUid == request.auth.uid);
+   allow update, delete: if admin();
+  }
+  match /pickup_records/{id} {
+   allow create: if driver() && request.resource.data.driverUid == request.auth.uid;
+   allow read: if admin() || (driver() && resource.data.driverUid == request.auth.uid);
+   allow update, delete: if admin();
+  }
+  match /movement_history/{id} {
+   allow create: if driver() && request.resource.data.driverUid == request.auth.uid;
+   allow read: if admin() || (driver() && resource.data.driverUid == request.auth.uid);
+   allow update, delete: if admin();
   }
  }
 }
