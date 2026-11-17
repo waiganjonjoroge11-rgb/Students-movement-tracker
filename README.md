@@ -1,33 +1,41 @@
 # Student Movement Tracker
 
-Two separate web interfaces share the Firebase project `student-movement-tracker`.
+Two separate Firebase-backed web apps using the existing Firebase project **student-movement-tracker**.
 
-- `index.html`: driver attendance app (picked up / absent) and opt-in vehicle GPS.
-- `monitor.html`: administrator dashboard, attendance history, movement events, map links and CSV export.
-- `firebase.js`: Firebase web configuration.
-- `firestore.rules`: suggested Firestore security rules.
+## Applications
+- **Driver application:** `driver/index.html` — driver sign-in, attendance check-in/check-out, student pickup ✓ and absence ✗, and automatic time-stamped movement history.
+- **Remote administrator website:** `monitor/index.html` — separate administrator sign-in, dashboard counts, student pickup register, driver attendance, movement history, and CSV report downloads.
 
-## Required Firebase setup
+## Firebase setup
+The existing Firebase Web App configuration is connected in `firebase-config.js`. Do not add service-account private keys to this public repository.
 
-1. In Firebase Console, open **Authentication → Sign-in method** and enable **Email/Password**.
-2. Create accounts for each driver and one administrator.
-3. In **Firestore Database**, create a collection named `users`. For the administrator, create a document whose document ID is the administrator's Firebase Authentication UID, with field `role` (string) = `admin`. Driver accounts do not need a role document.
-4. Create a `students` collection. Each student document should have:
-   - `name` (string)
-   - `active` (boolean, true)
-   - Optional: `className`, `route`, `parentContact` (strings)
-5. Open **Firestore → Rules**, review and publish the contents of `firestore.rules`. Do not use public read/write rules.
-6. If hosting on GitHub Pages, enable Pages for the repository's `main` branch and add the published hostname to Firebase Authentication → Settings → Authorized domains.
+1. In Firebase Console, open Authentication → Sign-in method and enable **Email/Password**.
+2. Create one account for each driver and at least one administrator.
+3. In Firestore, create a `users` document for each account. The document ID must be that account's Firebase Authentication UID. Set `role` to `driver` for drivers or `admin` for administrators.
+4. Keep the existing student register in the capitalized `Students` collection. Each document should have a `name`, `fullName`, or `studentName` field (the document ID is used if no name exists). A `phone` field is optional.
+5. Review and publish `firestore.rules` in Firestore → Rules. These rules require authenticated users and role documents; administrators can read reports, while drivers can write and read their own records.
+6. Enable the Firebase Hosting product before deployment.
 
-## Data collections
+## Hosting as two separate websites
+The repository includes `firebase.json` with two Hosting targets. From a computer with the Firebase CLI installed, run:
 
-- `attendance`: append-only attendance events with student, status, date, driver and timestamp.
-- `movements`: pickup/absence events and vehicle GPS coordinates.
-- `students`: student register.
-- `users`: administrator role profile.
+```sh
+npm install -g firebase-tools
+firebase login
+firebase use student-movement-tracker
+firebase target:apply hosting driver student-movement-tracker
+firebase target:apply hosting monitor student-movement-tracker
+firebase deploy --only hosting:driver,hosting:monitor
+```
 
-## Important
+This creates two separate Hosting sites in the same Firebase project. The final URLs are shown by the Firebase CLI after deployment.
 
-GPS tracking starts only after a signed-in driver presses **Start GPS** and grants location permission. Browsers generally require HTTPS for geolocation, so use GitHub Pages or another HTTPS host. The dashboard requires an administrator account with the Firestore `users/{uid}` document described above.
+## Firestore collections used
+- `Students` — existing student register.
+- `users` — account role documents.
+- `attendance` — driver check-in/check-out records.
+- `pickup_records` — picked/absent records.
+- `movement_history` — automatic event history.
 
-The app has not been deployed or live-tested against your Firebase database yet. Add student records and complete the Firebase setup before operational use.
+## Current status and limitations
+The application files and Firebase configuration are committed to GitHub. They have not yet been deployed to Firebase Hosting or tested against live Firestore. The Firebase Authentication accounts, role documents, and security rules still need to be completed in the Firebase Console. CSV downloads contain the most recent records loaded by the dashboard (up to 300 per category and 500 movement events per refresh).
