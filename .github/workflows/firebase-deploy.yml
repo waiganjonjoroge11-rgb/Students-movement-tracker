@@ -11,26 +11,43 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
+
       - name: Install Firebase CLI
         run: npm install --global firebase-tools
-      - name: Configure Firebase Hosting targets
-        env:
-          FIREBASE_DRIVER_SITE_ID: ${{ secrets.FIREBASE_DRIVER_SITE_ID }}
-          FIREBASE_MONITOR_SITE_ID: ${{ secrets.FIREBASE_MONITOR_SITE_ID }}
-        run: |
-          test -n "$FIREBASE_DRIVER_SITE_ID" || (echo "Missing FIREBASE_DRIVER_SITE_ID secret"; exit 1)
-          test -n "$FIREBASE_MONITOR_SITE_ID" || (echo "Missing FIREBASE_MONITOR_SITE_ID secret"; exit 1)
-          firebase target:apply hosting driver "$FIREBASE_DRIVER_SITE_ID" --project student-movement-tracker
-          firebase target:apply hosting monitor "$FIREBASE_MONITOR_SITE_ID" --project student-movement-tracker
-      - name: Deploy both portals
+
+      - name: Authenticate with Firebase
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
-          test -n "$FIREBASE_SERVICE_ACCOUNT" || (echo "Missing FIREBASE_SERVICE_ACCOUNT secret"; exit 1)
-          echo "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-service-account.json"
-          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-service-account.json"
-          firebase deploy --only hosting:driver,hosting:monitor --project student-movement-tracker
+          test -n "$FIREBASE_SERVICE_ACCOUNT" || (echo "Missing FIREBASE_SERVICE_ACCOUNT GitHub Actions secret"; exit 1)
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-service-account.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/firebase-service-account.json" >> "$GITHUB_ENV"
+
+      - name: Ensure Firebase Hosting sites and configure targets
+        run: |
+          set -euo pipefail
+          PROJECT_ID="student-movement-tracker"
+          DRIVER_SITE_ID="student-movement-driver"
+          MONITOR_SITE_ID="student-movement-admin"
+
+          firebase hosting:sites:list --project "$PROJECT_ID" --json > "$RUNNER_TEMP/hosting-sites.json"
+
+          if ! node -e 'const d=require(process.argv[1]); const a=d.result||d; const sites=Array.isArray(a)?a:[]; process.exit(sites.some(s=>(s.name||"").endsWith("/sites/"+process.argv[2]))?0:1)' "$RUNNER_TEMP/hosting-sites.json" "$DRIVER_SITE_ID"; then
+            firebase hosting:sites:create "$DRIVER_SITE_ID" --project "$PROJECT_ID"
+          fi
+
+          firebase hosting:sites:list --project "$PROJECT_ID" --json > "$RUNNER_TEMP/hosting-sites.json"
+          if ! node -e 'const d=require(process.argv[1]); const a=d.result||d; const sites=Array.isArray(a)?a:[]; process.exit(sites.some(s=>(s.name||"").endsWith("/sites/"+process.argv[2]))?0:1)' "$RUNNER_TEMP/hosting-sites.json" "$MONITOR_SITE_ID"; then
+            firebase hosting:sites:create "$MONITOR_SITE_ID" --project "$PROJECT_ID"
+          fi
+
+          firebase target:apply hosting driver "$DRIVER_SITE_ID" --project "$PROJECT_ID"
+          firebase target:apply hosting monitor "$MONITOR_SITE_ID" --project "$PROJECT_ID"
+
+      - name: Deploy both portals
+        run: firebase deploy --only hosting:driver,hosting:monitor --project student-movement-tracker
