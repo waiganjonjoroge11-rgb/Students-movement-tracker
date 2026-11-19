@@ -14,8 +14,8 @@ Two separate web applications share the existing Firebase project **student-move
 3. Create `users/{AUTH_UID}` documents in Firestore, setting `role` to exactly `driver` or `admin`. Create the first admin document manually in the Firebase Console.
 4. Keep the existing student collection named exactly `Students` (capital S). Student documents should include `name`; optional fields include `className`, `route`, and `parentContact`.
 5. Review and publish `firestore.rules` in Firestore → Rules.
-6. Confirm the two Hosting site IDs exist: `student-movement-driver` and `student-movement-admin`.
-7. Add the Hosting domains to Firebase Authentication → Settings → Authorized domains.
+6. The GitHub Actions deployment workflow creates the two Hosting sites if they are missing: `student-movement-driver` and `student-movement-admin`.
+7. Add both Hosting domains to Firebase Authentication → Settings → Authorized domains.
 
 ## Data collections
 
@@ -29,7 +29,7 @@ Two separate web applications share the existing Firebase project **student-move
 
 Add a valid `FIREBASE_SERVICE_ACCOUNT` repository secret in GitHub → Settings → Secrets and variables → Actions. The service account must have Firebase Hosting deployment permission in project `student-movement-tracker`.
 
-Run **Deploy Firebase Hosting** from the GitHub Actions tab, or push a commit to `main`. The workflow maps the existing Hosting sites to the two targets and deploys both portals. It intentionally does not create Hosting sites; the deployment account therefore does not need site-creation permission.
+Run **Deploy Firebase Hosting** from the GitHub Actions tab, or push a commit to `main`. The workflow creates either Hosting site if missing, maps the sites to the `driver` and `monitor` targets, and deploys both portals. The service account needs permission to create Firebase Hosting sites as well as deploy Hosting releases.
 
 If your Firebase Hosting site IDs differ, edit the IDs in `.github/workflows/firebase-deploy.yml` to match Firebase Console.
 
