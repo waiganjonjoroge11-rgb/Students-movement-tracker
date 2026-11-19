@@ -2,47 +2,37 @@
 
 Two separate web applications share the existing Firebase project **student-movement-tracker**.
 
-- **Driver app:** `driver/index.html` — driver sign-in, check-in/check-out, student pickup register (✓ picked / ✗ absent), timestamped movement history, and opt-in GPS tracking while the page remains open.
-- **Remote monitor:** `monitor/index.html` — administrator-only dashboard, student register, driver attendance, pickup history, daily/monthly CSV exports, and movement history.
-- `firebase-config.js` — shared Firebase Web App configuration.
-- `firebase.json` — separate Firebase Hosting targets named `driver` and `monitor`.
-- `firestore.rules` — access controls for administrators and drivers.
+- **Driver portal:** `driver/index.html` — sign-in, driver check-in/check-out, student pickup register (✓ picked up / ✗ absent), timestamped movement history, and opt-in GPS tracking.
+- **Administrator portal:** `monitor/index.html` — administrator-only dashboard, student register, attendance, pickup history, daily/monthly CSV reports, print/PDF, and movement history.
+- **firebase.json:** two Hosting targets, `driver` and `monitor`.
+- **firestore.rules:** role-based Firestore access rules.
 
-## Firebase setup required before use
+## Setup before live use
 
-1. In Firebase Console → Authentication → Sign-in method, enable **Email/Password**.
-2. Create one Firebase Authentication account for each driver and one for the administrator.
-3. In Firestore, create a `users` document for every account. Use the exact Firebase Authentication UID as the document ID:
-   - Administrator: `role: "admin"`
-   - Driver: `role: "driver"`
-4. Keep your existing student collection named **Students** (capital S). Each student document should include a `name` field. The driver app reads from this existing collection.
-5. Review and publish `firestore.rules` in Firestore → Rules. Do not replace them with public read/write rules.
-6. Add the deployed hosting domains to Firebase Authentication → Settings → Authorized domains.
-7. Driver GPS tracking requires HTTPS, browser location permission, and the driver page to remain open. It records periodic location points; it is not background tracking when the browser is closed.
+1. Enable Email/Password under Firebase Authentication → Sign-in method.
+2. Create each driver/admin account in Firebase Authentication.
+3. Create `users/{AUTH_UID}` documents in Firestore, setting `role` to exactly `driver` or `admin`. Create the first admin document manually in the Firebase Console.
+4. Keep the existing student collection named exactly `Students` (capital S). Student documents should include `name`; optional fields include `className`, `route`, and `parentContact`.
+5. Review and publish `firestore.rules` in Firestore → Rules.
+6. Confirm the two Hosting site IDs exist: `student-movement-driver` and `student-movement-admin`.
+7. Add the Hosting domains to Firebase Authentication → Settings → Authorized domains.
 
-## Firestore collections used
+## Data collections
 
-- `users`: role assignments for driver and administrator accounts.
-- `Students`: existing student register.
-- `attendance`: driver check-in/check-out records.
-- `pickup_records`: append-only picked/absent student records.
-- `movement_history`: timestamped driver and student movement events.
+- `users`: account roles.
+- `Students`: student register.
+- `attendance`: driver check-in/check-out events.
+- `pickup_records`: append-only student pickup/absence records.
+- `movement_history`: driver, student, and GPS events.
 
-## Separate hosting sites
+## Deployment
 
-The Firebase Hosting configuration has two targets. From a local copy of this repository with Firebase CLI installed and the correct Firebase account selected, create the two hosting sites/targets if they do not already exist, then deploy:
+Add a valid `FIREBASE_SERVICE_ACCOUNT` repository secret in GitHub → Settings → Secrets and variables → Actions. The service account must have Firebase Hosting deployment permission in project `student-movement-tracker`.
 
-```bash
-firebase target:apply hosting driver YOUR_DRIVER_SITE_ID
-firebase target:apply hosting monitor YOUR_MONITOR_SITE_ID
-firebase deploy --only hosting:driver,hosting:monitor
-```
+Run **Deploy Firebase Hosting** from the GitHub Actions tab, or push a commit to `main`. The workflow maps the existing Hosting sites to the two targets and deploys both portals. It intentionally does not create Hosting sites; the deployment account therefore does not need site-creation permission.
 
-The Firebase project ID and the two Hosting site IDs are not interchangeable. Create/confirm the Hosting sites in Firebase Console → Hosting before deploying.
+If your Firebase Hosting site IDs differ, edit the IDs in `.github/workflows/firebase-deploy.yml` to match Firebase Console.
 
-## Operational notes
+## GPS and privacy
 
-- Driver and administrator interfaces are separate websites but share the same Firestore database.
-- Drivers must be assigned `role: "driver"`; otherwise Firestore correctly denies access.
-- CSV export is available in the remote monitor for the records currently loaded.
-- This repository update does not itself publish Firestore Rules or deploy Hosting. Complete the Firebase setup and hosting deployment steps above before live use.
+GPS tracking requires HTTPS, browser location permission, and the driver page to remain open. Location points are saved only while the driver starts tracking. This is not background tracking after the browser is closed. Test with dummy student records before entering real children's personal information.
