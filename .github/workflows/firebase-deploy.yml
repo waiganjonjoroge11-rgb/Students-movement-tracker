@@ -5,6 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -15,7 +18,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install Firebase CLI
         run: npm install --global firebase-tools
@@ -24,30 +27,20 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
-          test -n "$FIREBASE_SERVICE_ACCOUNT" || (echo "Missing FIREBASE_SERVICE_ACCOUNT GitHub Actions secret"; exit 1)
+          set -euo pipefail
+          test -n "$FIREBASE_SERVICE_ACCOUNT" || { echo "::error::Missing FIREBASE_SERVICE_ACCOUNT repository secret"; exit 1; }
           printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-service-account.json"
+          node -e 'const fs=require("fs"); const p=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); if(p.type!=="service_account" || p.project_id!=="student-movement-tracker" || !p.client_email || !p.private_key) throw new Error("The secret must be a valid service-account JSON key for student-movement-tracker");' "$RUNNER_TEMP/firebase-service-account.json"
           echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/firebase-service-account.json" >> "$GITHUB_ENV"
 
-      - name: Ensure Firebase Hosting sites and configure targets
+      # The two Hosting sites were created separately in Firebase Console.
+      # Applying targets locally avoids requiring site-creation IAM permissions
+      # in the deployment service account.
+      - name: Configure existing Firebase Hosting targets
         run: |
           set -euo pipefail
-          PROJECT_ID="student-movement-tracker"
-          DRIVER_SITE_ID="student-movement-driver"
-          MONITOR_SITE_ID="student-movement-admin"
+          firebase target:apply hosting driver student-movement-driver --project student-movement-tracker
+          firebase target:apply hosting monitor student-movement-admin --project student-movement-tracker
 
-          firebase hosting:sites:list --project "$PROJECT_ID" --json > "$RUNNER_TEMP/hosting-sites.json"
-
-          if ! node -e 'const d=require(process.argv[1]); const a=d.result||d; const sites=Array.isArray(a)?a:[]; process.exit(sites.some(s=>(s.name||"").endsWith("/sites/"+process.argv[2]))?0:1)' "$RUNNER_TEMP/hosting-sites.json" "$DRIVER_SITE_ID"; then
-            firebase hosting:sites:create "$DRIVER_SITE_ID" --project "$PROJECT_ID"
-          fi
-
-          firebase hosting:sites:list --project "$PROJECT_ID" --json > "$RUNNER_TEMP/hosting-sites.json"
-          if ! node -e 'const d=require(process.argv[1]); const a=d.result||d; const sites=Array.isArray(a)?a:[]; process.exit(sites.some(s=>(s.name||"").endsWith("/sites/"+process.argv[2]))?0:1)' "$RUNNER_TEMP/hosting-sites.json" "$MONITOR_SITE_ID"; then
-            firebase hosting:sites:create "$MONITOR_SITE_ID" --project "$PROJECT_ID"
-          fi
-
-          firebase target:apply hosting driver "$DRIVER_SITE_ID" --project "$PROJECT_ID"
-          firebase target:apply hosting monitor "$MONITOR_SITE_ID" --project "$PROJECT_ID"
-
-      - name: Deploy both portals
-        run: firebase deploy --only hosting:driver,hosting:monitor --project student-movement-tracker
+      - name: Deploy driver and administrator portals
+        run: firebase deploy --only hosting:driver,hosting:monitor --project student-movement-tracker --non-interactive
