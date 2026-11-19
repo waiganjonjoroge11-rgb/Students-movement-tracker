@@ -42,5 +42,8 @@ jobs:
           firebase target:apply hosting driver student-movement-driver --project student-movement-tracker
           firebase target:apply hosting monitor student-movement-admin --project student-movement-tracker
 
+      - name: Verify Firebase credentials
+        run: firebase projects:list --project student-movement-tracker --debug
+
       - name: Deploy driver and administrator portals
-        run: firebase deploy --only hosting:driver,hosting:monitor --project student-movement-tracker --non-interactive
+        run: firebase deploy --only hosting:driver,hosting:monitor --project student-movement-tracker --non-interactive --debug
