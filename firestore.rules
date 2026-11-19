@@ -1,32 +1,59 @@
 rules_version = '2';
 service cloud.firestore {
- match /databases/{database}/documents {
-  function signedIn(){ return request.auth != null; }
-  function role(){ return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role; }
-  function admin(){ return signedIn() && role() == "admin"; }
-  function driver(){ return signedIn() && role() in ["driver","admin"]; }
-  match /users/{uid} {
-   allow read: if signedIn() && (request.auth.uid == uid || admin());
-   allow write: if admin();
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isAdmin() {
+      return signedIn() && userRole() == "admin";
+    }
+
+    function isDriverOrAdmin() {
+      return signedIn() && userRole() in ["driver", "admin"];
+    }
+
+    // Each account's role is assigned by an administrator in the Firebase
+    // Console. Users cannot promote themselves or edit their own role.
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow create, update, delete: if isAdmin();
+    }
+
+    // The portals use the capitalised collection name "Students".
+    match /Students/{studentId} {
+      allow read: if isDriverOrAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Driver portals write records with driverUid = the signed-in UID.
+    // Drivers can read only their own records; administrators can read all.
+    match /attendance/{recordId} {
+      allow create: if isDriverOrAdmin()
+        && request.resource.data.driverUid == request.auth.uid;
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.driverUid == request.auth.uid);
+      allow update, delete: if isAdmin();
+    }
+
+    match /pickup_records/{recordId} {
+      allow create: if isDriverOrAdmin()
+        && request.resource.data.driverUid == request.auth.uid;
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.driverUid == request.auth.uid);
+      allow update, delete: if isAdmin();
+    }
+
+    match /movement_history/{recordId} {
+      allow create: if isDriverOrAdmin()
+        && request.resource.data.driverUid == request.auth.uid;
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.driverUid == request.auth.uid);
+      allow update, delete: if isAdmin();
+    }
   }
-  match /Students/{studentId} {
-   allow read: if driver();
-   allow write: if admin();
-  }
-  match /attendance/{id} {
-   allow create: if driver() && request.resource.data.driverUid == request.auth.uid;
-   allow read: if admin() || (driver() && resource.data.driverUid == request.auth.uid);
-   allow update, delete: if admin();
-  }
-  match /pickup_records/{id} {
-   allow create: if driver() && request.resource.data.driverUid == request.auth.uid;
-   allow read: if admin() || (driver() && resource.data.driverUid == request.auth.uid);
-   allow update, delete: if admin();
-  }
-  match /movement_history/{id} {
-   allow create: if driver() && request.resource.data.driverUid == request.auth.uid;
-   allow read: if admin() || (driver() && resource.data.driverUid == request.auth.uid);
-   allow update, delete: if admin();
-  }
- }
 }
