@@ -18,10 +18,10 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24.18.0
 
       - name: Install Firebase CLI
-        run: npm install --global firebase-tools
+        run: npm install --global firebase-tools@15.22.3
 
       - name: Authenticate with Firebase
         env:
