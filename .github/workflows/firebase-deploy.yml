@@ -1,0 +1,36 @@
+name: Deploy Firebase Hosting
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Firebase CLI
+        run: npm install --global firebase-tools
+      - name: Configure Firebase Hosting targets
+        env:
+          FIREBASE_DRIVER_SITE_ID: ${{ secrets.FIREBASE_DRIVER_SITE_ID }}
+          FIREBASE_MONITOR_SITE_ID: ${{ secrets.FIREBASE_MONITOR_SITE_ID }}
+        run: |
+          test -n "$FIREBASE_DRIVER_SITE_ID" || (echo "Missing FIREBASE_DRIVER_SITE_ID secret"; exit 1)
+          test -n "$FIREBASE_MONITOR_SITE_ID" || (echo "Missing FIREBASE_MONITOR_SITE_ID secret"; exit 1)
+          firebase target:apply hosting driver "$FIREBASE_DRIVER_SITE_ID" --project student-movement-tracker
+          firebase target:apply hosting monitor "$FIREBASE_MONITOR_SITE_ID" --project student-movement-tracker
+      - name: Deploy both portals
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          test -n "$FIREBASE_SERVICE_ACCOUNT" || (echo "Missing FIREBASE_SERVICE_ACCOUNT secret"; exit 1)
+          echo "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-service-account.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-service-account.json"
+          firebase deploy --only hosting:driver,hosting:monitor --project student-movement-tracker
