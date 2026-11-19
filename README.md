@@ -2,8 +2,8 @@
 
 Two separate web applications share the existing Firebase project **student-movement-tracker**.
 
-- **Driver app:** `driver/index.html` — driver sign-in, daily check-in/check-out, student pickup register (✓ picked / ✗ absent), and timestamped movement history.
-- **Remote monitor:** `monitor/index.html` — administrator-only dashboard, student register, driver attendance, pickup history, and CSV exports.
+- **Driver app:** `driver/index.html` — driver sign-in, check-in/check-out, student pickup register (✓ picked / ✗ absent), timestamped movement history, and opt-in GPS tracking while the page remains open.
+- **Remote monitor:** `monitor/index.html` — administrator-only dashboard, student register, driver attendance, pickup history, daily/monthly CSV exports, and movement history.
 - `firebase-config.js` — shared Firebase Web App configuration.
 - `firebase.json` — separate Firebase Hosting targets named `driver` and `monitor`.
 - `firestore.rules` — access controls for administrators and drivers.
@@ -18,6 +18,7 @@ Two separate web applications share the existing Firebase project **student-move
 4. Keep your existing student collection named **Students** (capital S). Each student document should include a `name` field. The driver app reads from this existing collection.
 5. Review and publish `firestore.rules` in Firestore → Rules. Do not replace them with public read/write rules.
 6. Add the deployed hosting domains to Firebase Authentication → Settings → Authorized domains.
+7. Driver GPS tracking requires HTTPS, browser location permission, and the driver page to remain open. It records periodic location points; it is not background tracking when the browser is closed.
 
 ## Firestore collections used
 
