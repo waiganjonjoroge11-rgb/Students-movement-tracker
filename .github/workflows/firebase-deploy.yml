@@ -33,10 +33,18 @@ jobs:
           node -e 'const fs=require("fs"); const p=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); if(p.type!=="service_account" || p.project_id!=="student-movement-tracker" || !p.client_email || !p.private_key) throw new Error("The secret must be a valid service-account JSON key for student-movement-tracker");' "$RUNNER_TEMP/firebase-service-account.json"
           echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/firebase-service-account.json" >> "$GITHUB_ENV"
 
-      # The two Hosting sites were created separately in Firebase Console.
-      # Applying targets locally avoids requiring site-creation IAM permissions
-      # in the deployment service account.
-      - name: Configure existing Firebase Hosting targets
+      - name: Create missing Firebase Hosting sites
+        run: |
+          set -euo pipefail
+          for site in student-movement-driver student-movement-admin; do
+            if firebase hosting:sites:get "$site" --project student-movement-tracker >/dev/null 2>&1; then
+              echo "Hosting site $site already exists"
+            else
+              firebase hosting:sites:create "$site" --project student-movement-tracker --non-interactive
+            fi
+          done
+
+      - name: Configure Firebase Hosting targets
         run: |
           set -euo pipefail
           firebase target:apply hosting driver student-movement-driver --project student-movement-tracker
