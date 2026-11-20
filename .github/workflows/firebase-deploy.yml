@@ -53,5 +53,8 @@ jobs:
       - name: Verify Firebase credentials
         run: firebase projects:list --project student-movement-tracker --debug
 
+      - name: Deploy Firestore security rules
+        run: firebase deploy --only firestore:rules --project student-movement-tracker --non-interactive --debug
+
       - name: Deploy driver and administrator portals
         run: firebase deploy --only hosting:driver,hosting:monitor --project student-movement-tracker --non-interactive --debug
