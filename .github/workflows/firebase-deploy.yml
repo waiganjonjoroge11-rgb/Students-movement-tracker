@@ -9,7 +9,8 @@ permissions:
   contents: read
 
 jobs:
-  deploy:
+  deploy-hosting:
+    name: Deploy driver and administrator portals
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -18,10 +19,10 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 24.18.0
+          node-version: 24
 
       - name: Install Firebase CLI
-        run: npm install --global firebase-tools@15.22.3
+        run: npm install --global firebase-tools@latest
 
       - name: Authenticate with Firebase
         env:
@@ -30,7 +31,7 @@ jobs:
           set -euo pipefail
           test -n "$FIREBASE_SERVICE_ACCOUNT" || { echo "::error::Missing FIREBASE_SERVICE_ACCOUNT repository secret"; exit 1; }
           printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-service-account.json"
-          node -e 'const fs=require("fs"); const p=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); if(p.type!=="service_account" || p.project_id!=="student-movement-tracker" || !p.client_email || !p.private_key) throw new Error("The secret must be a valid service-account JSON key for student-movement-tracker");' "$RUNNER_TEMP/firebase-service-account.json"
+          node -e 'const fs=require("fs"); const p=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); if(p.type!=="service_account" || p.project_id!=="student-movement-tracker" || p.client_email!=="firebase-adminsdk-fbsvc@student-movement-tracker.iam.gserviceaccount.com" || !p.private_key) throw new Error("FIREBASE_SERVICE_ACCOUNT must be a valid key for the expected student-movement-tracker service account");' "$RUNNER_TEMP/firebase-service-account.json"
           echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/firebase-service-account.json" >> "$GITHUB_ENV"
 
       - name: Create missing Firebase Hosting sites
@@ -51,10 +52,35 @@ jobs:
           firebase target:apply hosting monitor student-movement-admin --project student-movement-tracker
 
       - name: Verify Firebase credentials
-        run: firebase projects:list --project student-movement-tracker --debug
-
-      - name: Deploy Firestore security rules
-        run: firebase deploy --only firestore:rules --project student-movement-tracker --non-interactive --debug
+        run: firebase projects:list --project student-movement-tracker
 
       - name: Deploy driver and administrator portals
-        run: firebase deploy --only hosting:driver,hosting:monitor --project student-movement-tracker --non-interactive --debug
+        run: firebase deploy --only hosting:driver,hosting:monitor --project student-movement-tracker --non-interactive
+
+  deploy-firestore-rules:
+    name: Deploy Firestore security rules
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install Firebase CLI
+        run: npm install --global firebase-tools@latest
+
+      - name: Authenticate with Firebase
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          set -euo pipefail
+          test -n "$FIREBASE_SERVICE_ACCOUNT" || { echo "::error::Missing FIREBASE_SERVICE_ACCOUNT repository secret"; exit 1; }
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-service-account.json"
+          node -e 'const fs=require("fs"); const p=JSON.parse(fs.readFileSync(process.argv[1],"utf8")); if(p.type!=="service_account" || p.project_id!=="student-movement-tracker" || p.client_email!=="firebase-adminsdk-fbsvc@student-movement-tracker.iam.gserviceaccount.com" || !p.private_key) throw new Error("FIREBASE_SERVICE_ACCOUNT must be a valid key for the expected student-movement-tracker service account");' "$RUNNER_TEMP/firebase-service-account.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/firebase-service-account.json" >> "$GITHUB_ENV"
+
+      - name: Deploy Firestore security rules
+        run: firebase deploy --only firestore:rules --project student-movement-tracker --non-interactive
